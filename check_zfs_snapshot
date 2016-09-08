@@ -1,0 +1,41 @@
+#!/bin/sh
+
+FSNAME=$1
+WARNAGE=$2
+CRITAGE=$3
+
+NOW=$(/bin/date +%s)
+
+ZFS="sudo /sbin/zfs"
+
+# get all snapshots of zfs filesystem and search for newest snapshot
+CREATIONDATE=$($ZFS get creation -Hpr -t snapshot $FSNAME | /bin/awk 'BEGIN {max = 0} {if ($3>max) max=$3} END {print max}')
+
+DIFF=$((NOW-CREATIONDATE))
+
+if (( WARNAGE > CRITAGE )); then
+  echo "usage: $0 <fsname> <warntime> <crittime>"
+  echo " warning time must be smaller than crittime"
+  exit 3
+fi
+
+RETVAL=3 # UNKNOWN
+
+MSG=""
+
+if (( DIFF > CRITAGE )); then
+  RETVAL=2 # CRITICAL
+  MSG="CRITICAL:"
+elif (( DIFF > WARNAGE )); then
+  RETVAL=1 # WARNING
+  MSG="WARNING:"
+else
+  RETVAL=0 # OK
+  MSG="OK:"
+fi
+
+DATEFMT=$(date -d @$CREATIONDATE +"%Y-%m-%dT%H:%M:%SZ")
+
+echo "$MSG snapshot $FSNAME created $DATEFMT" 
+
+exit $RETVAL
