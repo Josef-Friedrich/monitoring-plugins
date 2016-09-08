@@ -18,31 +18,36 @@ if [ -z "$CRITAGE" ]; then
 	CRITAGE=259200
 fi
 
+if ! zfs list $FSNAME > /dev/null 2>&1; then
+	_usage
+	echo "'$FSNAME' is no zfs filesystem!"
+	exit 3
+fi
+
 NOW=$(date +%s)
 
-# get all snapshots of zfs filesystem and search for newest snapshot
-CREATIONDATE=$(zfs get creation -Hpr -t snapshot $FSNAME | awk 'BEGIN {max = 0} {if ($3>max) max=$3} END {print max}')
+# Get all snapshots of zfs filesystem and search for newest snapshot
+CREATIONDATE=$(zfs get creation -Hpr -t snapshot $FSNAME | \
+	awk 'BEGIN {max = 0} {if ($3>max) max=$3} END {print max}')
 
 DIFF=$((NOW-CREATIONDATE))
 if [ "$WARNAGE" -gt "$CRITAGE" ]; then
-  _usage
-  echo " warning time must be smaller than crittime"
-  exit 3
+	_usage
+	echo "<warntime> must be smaller than <crittime>"
+	exit 3
 fi
 
 RETVAL=3 # UNKNOWN
 
-MSG=""
-
 if [ "$DIFF" -gt "$CRITAGE" ]; then
-  RETVAL=2 # CRITICAL
-  MSG="CRITICAL:"
+	RETVAL=2 # CRITICAL
+	MSG="CRITICAL:"
 elif [ "$DIFF" -gt "$WARNAGE" ]; then
-  RETVAL=1 # WARNING
-  MSG="WARNING:"
+	RETVAL=1 # WARNING
+	MSG="WARNING:"
 else
-  RETVAL=0 # OK
-  MSG="OK:"
+	RETVAL=0 # OK
+	MSG="OK:"
 fi
 
 DATEFMT=$(date -d @$CREATIONDATE +"%Y-%m-%dT%H:%M:%SZ")
