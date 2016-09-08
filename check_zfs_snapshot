@@ -24,8 +24,8 @@ NOW=$(date +%s)
 CREATIONDATE=$(zfs get creation -Hpr -t snapshot $FSNAME | awk 'BEGIN {max = 0} {if ($3>max) max=$3} END {print max}')
 
 DIFF=$((NOW-CREATIONDATE))
-if [ -z "$FSNAME" ] && [ "$WARNAGE" -gt "$CRITAGE" ]; then
-  echo "Usage: $0 <fsname> <warntime> <crittime>"
+if [ "$WARNAGE" -gt "$CRITAGE" ]; then
+  _usage
   echo " warning time must be smaller than crittime"
   exit 3
 fi
