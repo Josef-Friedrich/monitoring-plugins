@@ -1,21 +1,96 @@
 #! /bin/sh
 
+# MIT License
+#
+# Copyright (c) 2016 Josef Friedrich <josef@friedrich.rocks>
+#
+# Permission is hereby granted, free of charge, to any person obtaining a
+# copy of this software and associated documentation files (the
+# "Software"), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
+#
+# The above copyright notice and this permission notice shall be included
+# in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+# OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+# IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+# CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+# TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+# SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+# Exit codes
+STATE_OK=0
+STATE_WARNING=1
+STATE_CRITICAL=2
+STATE_UNKNOWN=3
+
 _usage() {
-	echo "usage: $(basename $0) <fsname> <warntime> <crittime>"
+	echo "check_zfs_snapshot
+Copyright (c) 2016 Josef Friedrich <josef@friedrich.rocks>
+
+Checks how long ago the last snapshot of a ZFS dataset was created.
+
+
+Usage: check_zfs_snapshot <options>
+
+Options:
+  -c INTERVAL_CRITICAL
+    Interval in seconds for critical state.
+  -d DATASET
+    Check if the package 'anacron' is installed.
+  -h
+    Show this help.
+  -w INTERVAL_WARNING
+    Interval in seconds for warning state. Must be lower than -c".
 }
 
-FSNAME=$1
-WARNAGE=$2
-CRITAGE=$3
+while getopts ":c:d:hw:" OPT; do
+	case $OPT in
 
-if [ -z "$WARNAGE" ]; then
+
+		c)
+			INTERVAL_CRITICAL=$OPTARG
+			;;
+
+		d)
+			DATASET="$OPTARG"
+			;;
+
+		h)
+			_usage
+			exit 0
+			;;
+
+		w)
+			INTERVAL_WARNING=$OPTARG
+			;;
+
+		\?)
+			echo "Invalid option: -$OPTARG" >&2
+			exit 1
+			;;
+
+		:)
+			echo "Option -$OPTARG requires an argument." >&2
+			exit 1
+			;;
+
+	esac
+done
+
+if [ -z "$INTERVAL_WARNING" ]; then
 	# 1 day
-	WARNAGE=86400
+	INTERVAL_WARNING=86400
 fi
 
-if [ -z "$CRITAGE" ]; then
+if [ -z "$INTERVAL_CRITICAL" ]; then
 	# 3 day
-	CRITAGE=259200
+	INTERVAL_CRITICAL=259200
 fi
 
 if ! zfs list $FSNAME > /dev/null 2>&1; then
@@ -26,32 +101,31 @@ fi
 
 NOW=$(date +%s)
 
-# Get all snapshots of zfs filesystem and search for newest snapshot
 CREATIONDATE=$(zfs get creation -Hpr -t snapshot $FSNAME | \
 	awk 'BEGIN {max = 0} {if ($3>max) max=$3} END {print max}')
 
 DIFF=$((NOW-CREATIONDATE))
-if [ "$WARNAGE" -gt "$CRITAGE" ]; then
+if [ "$INTERVAL_WARNING" -gt "$INTERVAL_CRITICAL" ]; then
 	_usage
 	echo "<warntime> must be smaller than <crittime>"
 	exit 3
 fi
 
-RETVAL=3 # UNKNOWN
+RETURN=STATE_UNKNOWN
 
-if [ "$DIFF" -gt "$CRITAGE" ]; then
-	RETVAL=2 # CRITICAL
+if [ "$DIFF" -gt "$INTERVAL_CRITICAL" ]; then
+	RETURN=$STATE_CRITICAL
 	MSG="CRITICAL:"
-elif [ "$DIFF" -gt "$WARNAGE" ]; then
-	RETVAL=1 # WARNING
+elif [ "$DIFF" -gt "$INTERVAL_WARNING" ]; then
+	RETURN=$STATE_WARNING
 	MSG="WARNING:"
 else
-	RETVAL=0 # OK
+	RETURN=$STATE_OK
 	MSG="OK:"
 fi
 
 DATEFMT=$(date -d @$CREATIONDATE +"%Y-%m-%dT%H:%M:%SZ")
 
-echo "$MSG snapshot $FSNAME created $DATEFMT" 
+echo "$MSG snapshot $FSNAME created $DATEFMT"
 
-exit $RETVAL
+exit $RETURN
