@@ -26,8 +26,9 @@ fi
 
 NOW=$(date +%s)
 
-# get all snapshots of zfs filesystem and search for newest snapshot
-CREATIONDATE=$(zfs get creation -Hpr -t snapshot $FSNAME | awk 'BEGIN {max = 0} {if ($3>max) max=$3} END {print max}')
+# Get all snapshots of zfs filesystem and search for newest snapshot
+CREATIONDATE=$(zfs get creation -Hpr -t snapshot $FSNAME | \
+	awk 'BEGIN {max = 0} {if ($3>max) max=$3} END {print max}')
 
 DIFF=$((NOW-CREATIONDATE))
 if [ "$WARNAGE" -gt "$CRITAGE" ]; then
@@ -37,8 +38,6 @@ if [ "$WARNAGE" -gt "$CRITAGE" ]; then
 fi
 
 RETVAL=3 # UNKNOWN
-
-MSG=""
 
 if [ "$DIFF" -gt "$CRITAGE" ]; then
 	RETVAL=2 # CRITICAL
