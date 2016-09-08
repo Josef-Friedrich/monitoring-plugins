@@ -1,0 +1,321 @@
+#! /bin/sh
+
+##
+# Project page: https://github.com/Josef-Friedrich/check_unattended_upgrades
+# Copyright (c) 2015 Josef Friedrich <jf@josef-friedrich.de>
+##
+
+##
+# Default check values
+##
+
+# Check if the configuration 'APT::Periodic::AutocleanInterval' is set
+# properly.
+#CHECK_AUTOCLEAN=7
+
+# Check if the package 'anacron' is installed.
+#CHECK_ANACRON=1
+
+# Time interval since the last execution to result in a critical state
+# (seconds).
+#CHECK_CRITICAL=187200
+
+# Check if the configuration
+# 'APT::Periodic:Download-Upgradeable-Packages' is set properly.
+#CHECK_DOWNLOAD=1
+
+# Check if the configuration 'APT::Periodic::Enable' is set properly.
+#CHECK_ENABLE=1
+
+# Check if the configuration 'APT::Periodic::Update-Package-Lists' is
+# set properly.
+#CHECK_LISTS=1
+
+# Check if the configuration 'Unattended-Upgrade::Mail' is set properly.
+#CHECK_MAIL="you@example.com"
+
+# Check if the configuration
+# 'Unattended-Upgrade::Remove-Unused-Dependencies' is set properly.
+#CHECK_REMOVE="true"
+
+# Check if the machine needs a reboot.
+#CHECK_REBOOT=1
+
+# Check if the configuration 'APT::Periodic::RandomSleep' is set
+# properly.
+#CHECK_SLEEP=0
+
+# Check if 'Unattended-upgrades' is configured to handle security
+# updates.
+#CHECK_SECURITY=1
+
+# Check if the configuration 'APT::Periodic::Unattended-Upgrade' is set
+# properly.
+#CHECK_UNATTENDED=1
+
+# Time interval since the last execution to result in a warning state
+# (seconds).
+#CHECK_WARNING=93600
+
+# Exit codes
+STATE_OK=0
+STATE_WARNING=1
+STATE_CRITICAL=2
+STATE_UNKNOWN=3
+
+_get_config() {
+	eval $(apt-config shell "$2" "$1")
+}
+
+_check_config() {
+	local CONFIG=$1
+	local DEBIT=$2
+
+	_get_config $CONFIG "CREDIT"
+	if [ "$DEBIT" != "$CREDIT" ]; then
+			echo "CRITICAL - The configuration '$CONFIG' is not configured properly. It has the value '$CREDIT', but it should have '$DEBIT'."
+		exit $STATE_CRITICAL
+	fi
+}
+
+_usage() {
+  echo "check_unattended_upgrades
+Copyright (c) 2015 Josef Friedrich <jf@josef-friedrich.de>
+
+This plugin checks if automatic updates (unattended_upgrades) are working.
+
+
+Usage: check_unattended_upgrades <options>
+
+Options:
+ -a
+    Check if the configuration 'APT::Periodic::AutocleanInterval' is set
+    properly.
+ -A
+    Check if the package 'anacron' is installed.
+ -c
+    Time interval since the last execution to result in a critical state
+    (seconds).
+ -d
+    Check if the configuration 'APT::Periodic:Download-Upgradeable-Packages'
+    is set properly.
+ -e
+    Check if the configuration 'APT::Periodic::Enable' is set properly.
+ -h
+    Show this help message.
+ -l
+    Check if the configuration 'APT::Periodic::Update-Package-Lists' is set
+    properly.
+ -m
+    Check if the configuration 'Unattended-Upgrade::Mail' is set properly.
+ -r
+    Check if the configuration 'Unattended-Upgrade::Remove-Unused-
+    Dependencies' is set properly.
+ -R
+    Check if the machine needs a reboot.
+ -s
+    Check if the configuration 'APT::Periodic::RandomSleep' is set properly.
+ -S
+    Check if 'Unattended-upgrades' is configured to handle security updates.
+ -u
+    Check if the configuration 'APT::Periodic::Unattended-Upgrade' is set
+    properly.
+ -w
+    Time interval since the last execution to result in a warning state
+    (seconds).
+"
+}
+
+while getopts ":a:Ac:d:e:hl:m:r:Rs:Su:w:" OPT; do
+	case $OPT in
+
+		a)
+			CHECK_AUTOCLEAN="$OPTARG"
+			;;
+		A)
+			CHECK_ANACRON=1
+			;;
+
+		c)
+			CHECK_CRITICAL="$OPTARG"
+			;;
+
+		d)
+			CHECK_DOWNLOAD="$OPTARG"
+			;;
+
+		e)
+			CHECK_ENABLE="$OPTARG"
+			;;
+
+		h)
+			_usage
+			exit 0
+			;;
+
+		l)
+			CHECK_LISTS="$OPTARG"
+			;;
+
+		m)
+			CHECK_MAIL="$OPTARG"
+			;;
+
+		r)
+			CHECK_REMOVE="$OPTARG"
+			;;
+
+		R)
+			CHECK_REBOOT=1
+			;;
+
+		s)
+			CHECK_SLEEP="$OPTARG"
+			;;
+
+		S)
+			CHECK_SECURITY=1
+			;;
+
+		u)
+			CHECK_UNATTENDED="$OPTARG"
+			;;
+
+		w)
+			CHECK_WARNING="$OPTARG"
+			;;
+
+		\?)
+			echo "Invalid option: -$OPTARG" >&2
+			exit 1
+			;;
+
+		:)
+			echo "Option -$OPTARG requires an argument." >&2
+			exit 1
+			;;
+
+	esac
+done
+
+##
+# Check for auxiliary packages.
+##
+
+# -A
+if [ ! -z ${CHECK_ANACRON+x} ] && [ ! -x /usr/sbin/anacron ]; then	
+	echo 'CRITICAL - Package "anacron" is not installed.'
+	exit $STATE_CRITICAL
+fi
+
+##
+# Configuration checks
+##
+
+if which apt-config > /dev/null; then
+
+	# -e
+	if [ ! -z ${CHECK_ENABLE+x} ]; then
+		_check_config "APT::Periodic::Enable" $CHECK_ENABLE
+	fi
+
+	# -u
+	if [ ! -z ${CHECK_UNATTENDED+x} ]; then
+		_check_config "APT::Periodic::Unattended-Upgrade" $CHECK_UNATTENDED
+	fi
+
+	# -m
+	if [ ! -z ${CHECK_MAIL+x} ]; then
+		_check_config "Unattended-Upgrade::Mail" $CHECK_MAIL
+	fi
+
+	# -d
+	if [ ! -z ${CHECK_DOWNLOAD+x} ]; then
+		_check_config "APT::Periodic::Download-Upgradeable-Packages" $CHECK_DOWNLOAD
+	fi
+
+	# -r
+	if [ ! -z ${CHECK_REMOVE+x} ]; then
+		_check_config "Unattended-Upgrade::Remove-Unused-Dependencies" $CHECK_REMOVE
+	fi
+
+	# -s
+	if [ ! -z ${CHECK_SLEEP+x} ]; then
+		_check_config "APT::Periodic::RandomSleep" $CHECK_SLEEP
+	fi
+
+	# -l
+	if [ ! -z ${CHECK_LISTS+x} ]; then
+		_check_config "APT::Periodic::Update-Package-Lists" $CHECK_LISTS
+	fi
+
+	# -a
+	if [ ! -z ${CHECK_AUTOCLEAN+x} ]; then
+		_check_config "APT::Periodic::AutocleanInterval" $CHECK_AUTOCLEAN
+	fi
+
+	if [ ! -z ${CHECK_SECURITY+x} ]; then
+		if ! apt-config dump | grep 'Unattended-Upgrade::Allowed-Origins\|Unattended-Upgrade::Origins-Pattern' | grep -i 'security' > /dev/null ; then
+			echo 'CRITICAL - Unattended-upgrades is not configured to handle security updates.'
+			exit $STATE_CRITICAL
+		fi
+	fi
+fi
+
+##
+# Reboot
+##
+
+if [ -n "$CHECK_REBOOT" ] && [ -f /var/run/reboot-required ]; then
+	echo "WARNING - Machine requires a reboot."
+	exit $STATE_WARNING
+fi
+
+##
+# Time checks
+##
+
+# Log file check
+
+LOG_FILE='/var/log/unattended-upgrades/unattended-upgrades.log'
+
+if [ ! -f $LOG_FILE ]; then
+	echo "CRITICAL - Log file ($LOG_FILE) does not exist."
+	exit $STATE_CRITICAL
+fi
+
+LAST_LOG_LINE=$(tail -n 1 $LOG_FILE )
+
+if [ -z "$LAST_LOG_LINE" ]; then
+	LATEST_COMPRESSED_LOG=$(ls -r ${LOG_FILE}.*.gz | tail -n 1)
+	LAST_LOG_LINE=$(zcat $LATEST_COMPRESSED_LOG | tail -n 1)
+fi
+
+LAST_RUN_DATE=$(echo $LAST_LOG_LINE | cut -d "," -f 1)
+
+if [ -z "$LAST_RUN_DATE" ]; then
+	echo "CRITICAL - The date on which the command 'unattended-upgrades' ran for the last time, could not be determined. The log file '$LOG_FILE' is empty."
+	exit $STATE_CRITICAL
+fi
+
+if [ -z ${CHECK_CRITICAL+x} ] || [ -z ${CHECK_WARNING+x} ]; then
+	echo "CRITICAL - You have at least to specify the two options '-c' and '-w', e. g.: check_unattended_upgrades -c 3600 -w 7200."
+	exit $STATE_CRITICAL
+fi
+
+LAST_RUN=$(date -d "$LAST_RUN_DATE" +%s)
+CURRENT=$(date +%s)
+DIFF=$((CURRENT - LAST_RUN))
+
+# Critical
+if [ "$DIFF" -gt "$CHECK_CRITICAL" ]; then
+	echo "CRITICAL - Unattended upgrades last run was on ${LAST_RUN_DATE}."
+	exit $STATE_CRITICAL
+# Warning
+elif [ "$DIFF" -gt "$CHECK_WARNING" ]; then
+	echo "WARNING - Unattended upgrades last run was on ${LAST_RUN_DATE}."
+	exit $STATE_WARNING
+else
+	echo "OK - Unattended upgrades last run was on ${LAST_RUN_DATE}."
+	exit $STATE_OK
+fi
