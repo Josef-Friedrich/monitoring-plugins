@@ -1,8 +1,22 @@
 #! /bin/sh
 
+_usage() {
+	echo "usage: $(basename $0) <fsname> <warntime> <crittime>"
+}
+
 FSNAME=$1
 WARNAGE=$2
 CRITAGE=$3
+
+if [ -z "$WARNAGE" ]; then
+	# 1 day
+	WARNAGE=86400
+fi
+
+if [ -z "$CRITAGE" ]; then
+	# 3 day
+	CRITAGE=259200
+fi
 
 NOW=$(date +%s)
 
@@ -10,8 +24,8 @@ NOW=$(date +%s)
 CREATIONDATE=$(zfs get creation -Hpr -t snapshot $FSNAME | awk 'BEGIN {max = 0} {if ($3>max) max=$3} END {print max}')
 
 DIFF=$((NOW-CREATIONDATE))
-if [ "$WARNAGE" > "$CRITAGE" ]; then
-  echo "usage: $0 <fsname> <warntime> <crittime>"
+if [ -z "$FSNAME" ] && [ "$WARNAGE" -gt "$CRITAGE" ]; then
+  echo "Usage: $0 <fsname> <warntime> <crittime>"
   echo " warning time must be smaller than crittime"
   exit 3
 fi
@@ -20,10 +34,10 @@ RETVAL=3 # UNKNOWN
 
 MSG=""
 
-if [ "$DIFF" > "$CRITAGE" ]; then
+if [ "$DIFF" -gt "$CRITAGE" ]; then
   RETVAL=2 # CRITICAL
   MSG="CRITICAL:"
-elif [ "$DIFF" > "$WARNAGE" ]; then
+elif [ "$DIFF" -gt "$WARNAGE" ]; then
   RETVAL=1 # WARNING
   MSG="WARNING:"
 else
