@@ -18,6 +18,12 @@ if [ -z "$CRITAGE" ]; then
 	CRITAGE=259200
 fi
 
+if ! zfs list $FSNAME > /dev/null 2>&1; then
+	_usage
+	echo "'$FSNAME' is no zfs filesystem!"
+	exit 3
+fi
+
 NOW=$(date +%s)
 
 # get all snapshots of zfs filesystem and search for newest snapshot
@@ -26,7 +32,7 @@ CREATIONDATE=$(zfs get creation -Hpr -t snapshot $FSNAME | awk 'BEGIN {max = 0} 
 DIFF=$((NOW-CREATIONDATE))
 if [ "$WARNAGE" -gt "$CRITAGE" ]; then
   _usage
-  echo " warning time must be smaller than crittime"
+  echo "<warntime> must be smaller than <crittime>"
   exit 3
 fi
 
