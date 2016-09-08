@@ -42,7 +42,7 @@ Options:
   -c INTERVAL_CRITICAL
     Interval in seconds for critical state.
   -d DATASET
-    Check if the package 'anacron' is installed.
+    The ZFS dataset to check.
   -h
     Show this help.
   -w INTERVAL_WARNING
@@ -93,22 +93,22 @@ if [ -z "$INTERVAL_CRITICAL" ]; then
 	INTERVAL_CRITICAL=259200
 fi
 
-if ! zfs list $FSNAME > /dev/null 2>&1; then
+if ! zfs list $DATASET > /dev/null 2>&1; then
 	_usage
-	echo "'$FSNAME' is no zfs filesystem!"
-	exit 3
+	echo "'$DATASET' is no ZFS dataset!"
+	exit $STATE_UNKNOWN
 fi
 
 NOW=$(date +%s)
 
-CREATIONDATE=$(zfs get creation -Hpr -t snapshot $FSNAME | \
+CREATIONDATE=$(zfs get creation -Hpr -t snapshot $DATASET | \
 	awk 'BEGIN {max = 0} {if ($3>max) max=$3} END {print max}')
 
 DIFF=$((NOW-CREATIONDATE))
 if [ "$INTERVAL_WARNING" -gt "$INTERVAL_CRITICAL" ]; then
 	_usage
-	echo "<warntime> must be smaller than <crittime>"
-	exit 3
+	echo "-w INTERVAL_WARNING must be smaller than -c INTERVAL_CRITICAL"
+	exit $STATE_UNKNOWN
 fi
 
 RETURN=STATE_UNKNOWN
@@ -126,6 +126,6 @@ fi
 
 DATEFMT=$(date -d @$CREATIONDATE +"%Y-%m-%dT%H:%M:%SZ")
 
-echo "$MSG snapshot $FSNAME created $DATEFMT"
+echo "$MSG snapshot $DATASET created $DATEFMT"
 
 exit $RETURN
