@@ -1,5 +1,7 @@
 #! /bin/sh
 
+PREFIX=/sbin
+
 # MIT License
 #
 # Copyright (c) 2016 Josef Friedrich <josef@friedrich.rocks>
@@ -52,7 +54,6 @@ Options:
 while getopts ":c:d:hw:" OPT; do
 	case $OPT in
 
-
 		c)
 			INTERVAL_CRITICAL=$OPTARG
 			;;
@@ -93,7 +94,7 @@ if [ -z "$INTERVAL_CRITICAL" ]; then
 	INTERVAL_CRITICAL=259200
 fi
 
-if ! zfs list $DATASET > /dev/null 2>&1; then
+if ! $PREFIX/zfs list $DATASET > /dev/null 2>&1; then
 	_usage
 	echo "'$DATASET' is no ZFS dataset!"
 	exit $STATE_UNKNOWN
@@ -101,7 +102,7 @@ fi
 
 NOW=$(date +%s)
 
-CREATION_DATE=$(zfs get creation -Hpr -t snapshot $DATASET | \
+CREATION_DATE=$($PREFIX/zfs get creation -Hpr -t snapshot $DATASET | \
 	awk 'BEGIN {max = 0} {if ($3>max) max=$3} END {print max}')
 
 DIFF=$((NOW - CREATION_DATE))
@@ -130,4 +131,3 @@ DATE=$(date -d @$CREATION_DATE +"%Y-%m-%dT%H:%M:%SZ")
 echo "$MESSAGE snapshot $DATASET created $DATE"
 
 exit $RETURN
-
