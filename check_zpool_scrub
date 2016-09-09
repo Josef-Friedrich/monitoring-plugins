@@ -1,6 +1,6 @@
 #! /bin/sh
 
-PREFIX=/sbin
+PREFIX=/sbin/
 
 # MIT License
 #
@@ -95,7 +95,7 @@ if [ -z "$INTERVAL_CRITICAL" ]; then
 	INTERVAL_CRITICAL=5356800
 fi
 
-if ! $PREFIX/zpool status $POOL > /dev/null 2>&1; then
+if ! ${PREFIX}zpool status $POOL > /dev/null 2>&1; then
 	echo "'$POOL' is no zfs pool!"
 	_usage
 	exit 3
@@ -103,7 +103,7 @@ fi
 
 NOW=$(date +%s)
 
-LAST_SCRUB=$($PREFIX/zpool history | \
+LAST_SCRUB=$(${PREFIX}zpool history | \
 	grep "zpool scrub $POOL" | \
 	grep -v 'zpool scrub -s' | \
 	tail -n 1 | \
