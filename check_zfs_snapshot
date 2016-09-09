@@ -101,10 +101,11 @@ fi
 
 NOW=$(date +%s)
 
-CREATIONDATE=$(zfs get creation -Hpr -t snapshot $DATASET | \
+CREATION_DATE=$(zfs get creation -Hpr -t snapshot $DATASET | \
 	awk 'BEGIN {max = 0} {if ($3>max) max=$3} END {print max}')
 
-DIFF=$((NOW-CREATIONDATE))
+DIFF=$((NOW - CREATION_DATE))
+
 if [ "$INTERVAL_WARNING" -gt "$INTERVAL_CRITICAL" ]; then
 	_usage
 	echo "-w INTERVAL_WARNING must be smaller than -c INTERVAL_CRITICAL"
@@ -115,17 +116,18 @@ RETURN=STATE_UNKNOWN
 
 if [ "$DIFF" -gt "$INTERVAL_CRITICAL" ]; then
 	RETURN=$STATE_CRITICAL
-	MSG="CRITICAL:"
+	MESSAGE="CRITICAL:"
 elif [ "$DIFF" -gt "$INTERVAL_WARNING" ]; then
 	RETURN=$STATE_WARNING
-	MSG="WARNING:"
+	MESSAGE="WARNING:"
 else
 	RETURN=$STATE_OK
-	MSG="OK:"
+	MESSAGE="OK:"
 fi
 
-DATEFMT=$(date -d @$CREATIONDATE +"%Y-%m-%dT%H:%M:%SZ")
+DATE=$(date -d @$CREATION_DATE +"%Y-%m-%dT%H:%M:%SZ")
 
-echo "$MSG snapshot $DATASET created $DATEFMT"
+echo "$MESSAGE snapshot $DATASET created $DATE"
 
 exit $RETURN
+

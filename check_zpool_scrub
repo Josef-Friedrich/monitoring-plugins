@@ -122,21 +122,22 @@ RETURN=STATE_UNKNOWN
 
 if [ "$DIFF" -gt "$INTERVAL_CRITICAL" ]; then
 	RETURN=$STATE_CRITICAL
-	MSG="CRITICAL:"
+	MESSAGE="CRITICAL:"
 elif [ "$DIFF" -gt "$INTERVAL_WARNING" ]; then
 	RETURN=$STATE_WARNING
-	MSG="WARNING:"
+	MESSAGE="WARNING:"
 else
 	RETURN=$STATE_OK
-	MSG="OK:"
+	MESSAGE="OK:"
 fi
 
-DATEFMT=$(date -d @$LAST_SCRUB +"%Y-%m-%dT%H:%M:%SZ")
+DATE=$(date -d @$LAST_SCRUB +"%Y-%m-%dT%H:%M:%SZ")
 
 if [ -n "$POOL" ]; then
 	POOL="'$POOL' "
 fi
 
-echo "$MSG last scrub on ${POOL}have been performed on $DATEFMT"
+echo "$MESSAGE last scrub on ${POOL}have been performed on $DATE"
 
 exit $RETURN
+
