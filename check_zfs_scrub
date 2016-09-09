@@ -41,15 +41,15 @@ Usage: check_zfs_scrub <options>
 Options:
   -c INTERVAL_CRITICAL
     Interval in seconds for critical state.
-  -d DATASET
-    Check if the package 'anacron' is installed.
+  -p POOL
+    Name of the pool
   -h
     Show this help.
   -w INTERVAL_WARNING
     Interval in seconds for warning state. Must be lower than -c".
 }
 
-while getopts ":c:d:hw:" OPT; do
+while getopts ":c:hp:w:" OPT; do
 	case $OPT in
 
 
@@ -57,13 +57,13 @@ while getopts ":c:d:hw:" OPT; do
 			INTERVAL_CRITICAL=$OPTARG
 			;;
 
-		d)
-			DATASET="$OPTARG"
-			;;
-
 		h)
 			_usage
 			exit 0
+			;;
+
+		p)
+			POOL="$OPTARG"
 			;;
 
 		w)
@@ -84,30 +84,37 @@ while getopts ":c:d:hw:" OPT; do
 done
 
 if [ -z "$INTERVAL_WARNING" ]; then
-	# 1 day
-	INTERVAL_WARNING=86400
+	# 1 month 60*60*24*31
+	INTERVAL_WARNING=2678400
 fi
 
 if [ -z "$INTERVAL_CRITICAL" ]; then
 	# 3 day
-	INTERVAL_CRITICAL=259200
+	# 2 month 60*60*24*31*2
+	INTERVAL_CRITICAL=5356800
 fi
 
-if ! zfs list $FSNAME > /dev/null 2>&1; then
+if ! zpool status $POOL > /dev/null 2>&1; then
+	echo "'$POOL' is no zfs pool!"
 	_usage
-	echo "'$FSNAME' is no zfs filesystem!"
 	exit 3
 fi
 
 NOW=$(date +%s)
 
-CREATIONDATE=$(zfs get creation -Hpr -t snapshot $FSNAME | \
-	awk 'BEGIN {max = 0} {if ($3>max) max=$3} END {print max}')
+LAST_SCRUB=$(zpool history | \
+	grep "zpool scrub $POOL" | \
+	grep -v 'zpool scrub -s' | \
+	tail -n 1 | \
+	awk '{print $1}')
 
-DIFF=$((NOW-CREATIONDATE))
+LAST_SCRUB=$(date '+%s' --date="$(echo $LAST_SCRUB | tr '.' ' ')")
+
+DIFF=$((NOW - LAST_SCRUB))
+
 if [ "$INTERVAL_WARNING" -gt "$INTERVAL_CRITICAL" ]; then
-	_usage
 	echo "<warntime> must be smaller than <crittime>"
+	_usage
 	exit 3
 fi
 
@@ -124,8 +131,12 @@ else
 	MSG="OK:"
 fi
 
-DATEFMT=$(date -d @$CREATIONDATE +"%Y-%m-%dT%H:%M:%SZ")
+DATEFMT=$(date -d @$LAST_SCRUB +"%Y-%m-%dT%H:%M:%SZ")
 
-echo "$MSG snapshot $FSNAME created $DATEFMT"
+if [ -n "$POOL" ]; then
+	POOL="'$POOL' "
+fi
+
+echo "$MSG last scrub on ${POOL}have been performed on $DATEFMT"
 
 exit $RETURN
