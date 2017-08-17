@@ -1,27 +1,9 @@
 #! /bin/sh
 
-# MIT License
-#
-# Copyright (c) 2016 Josef Friedrich <josef@friedrich.rocks>
-#
-# Permission is hereby granted, free of charge, to any person obtaining a
-# copy of this software and associated documentation files (the
-# "Software"), to deal in the Software without restriction, including
-# without limitation the rights to use, copy, modify, merge, publish,
-# distribute, sublicense, and/or sell copies of the Software, and to
-# permit persons to whom the Software is furnished to do so, subject to
-# the following conditions:
-#
-# The above copyright notice and this permission notice shall be included
-# in all copies or substantial portions of the Software.
-#
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-# OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-# IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-# CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-# TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-# SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+##
+# Project page: https://github.com/Josef-Friedrich/check_unattended_upgrades
+# Copyright (c) 2015 Josef Friedrich <jf@josef-friedrich.de>
+##
 
 ##
 # Default check values
@@ -98,7 +80,7 @@ _check_config() {
 
 _usage() {
   echo "check_unattended_upgrades
-Copyright (c) 2015-2016 Josef Friedrich <jf@josef-friedrich.de>
+Copyright (c) 2015 Josef Friedrich <jf@josef-friedrich.de>
 
 This plugin checks if automatic updates (unattended_upgrades) are working.
 
@@ -106,39 +88,39 @@ This plugin checks if automatic updates (unattended_upgrades) are working.
 Usage: check_unattended_upgrades <options>
 
 Options:
-  -a
+ -a
     Check if the configuration 'APT::Periodic::AutocleanInterval' is set
     properly.
-  -A
+ -A
     Check if the package 'anacron' is installed.
-  -c
+ -c
     Time interval since the last execution to result in a critical state
     (seconds).
-  -d
+ -d
     Check if the configuration 'APT::Periodic:Download-Upgradeable-Packages'
     is set properly.
-  -e
+ -e
     Check if the configuration 'APT::Periodic::Enable' is set properly.
-  -h
+ -h
     Show this help message.
-  -l
+ -l
     Check if the configuration 'APT::Periodic::Update-Package-Lists' is set
     properly.
-  -m
+ -m
     Check if the configuration 'Unattended-Upgrade::Mail' is set properly.
-  -r
+ -r
     Check if the configuration 'Unattended-Upgrade::Remove-Unused-
     Dependencies' is set properly.
-  -R
+ -R
     Check if the machine needs a reboot.
-  -s
+ -s
     Check if the configuration 'APT::Periodic::RandomSleep' is set properly.
-  -S
+ -S
     Check if 'Unattended-upgrades' is configured to handle security updates.
-  -u
+ -u
     Check if the configuration 'APT::Periodic::Unattended-Upgrade' is set
     properly.
-  -w
+ -w
     Time interval since the last execution to result in a warning state
     (seconds).
 "
@@ -221,7 +203,7 @@ done
 ##
 
 # -A
-if [ ! -z ${CHECK_ANACRON+x} ] && [ ! -x /usr/sbin/anacron ]; then
+if [ ! -z ${CHECK_ANACRON+x} ] && [ ! -x /usr/sbin/anacron ]; then	
 	echo 'CRITICAL - Package "anacron" is not installed.'
 	exit $STATE_CRITICAL
 fi
