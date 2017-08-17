@@ -82,17 +82,18 @@ Copyright (c) 2016 Josef Friedrich <josef@friedrich.rocks>
 
 Checks how long ago the last snapshot of a ZFS dataset was created.
 
-
 Usage: check_zfs_snapshot <options>
 
 Options:
-  -c INTERVAL_CRITICAL
+  -c, --critical=INTERVAL_CRITICAL
     Interval in seconds for critical state.
-  -d DATASET
+  -d, --dataset=DATASET
     The ZFS dataset to check.
-  -h
+  -h, --help
     Show this help.
-  -w INTERVAL_WARNING
-    Interval in seconds for warning state. Must be lower than -c.
+  -s, --short-description
+    Show a short description of the command.
+  -w, --warning=INTERVAL_WARNING
+    Interval in seconds for warning state. Must be lower than -c
 ```
 
