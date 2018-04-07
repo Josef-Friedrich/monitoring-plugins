@@ -1,0 +1,53 @@
+#! /bin/sh
+
+# MIT License
+#
+# Copyright (c) 2018 Josef Friedrich <josef@friedrich.rocks>
+#
+# Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and associated documentation files (the
+# "Software"), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
+#
+# The above copyright notice and this permission notice shall be
+# included in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+# IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+# CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+# TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+# SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+# Exit codes
+STATE_OK=0
+STATE_WARNING=1
+STATE_CRITICAL=2
+STATE_UNKNOWN=3
+
+# jf@josef-friedrich.de
+# or
+# jfde (host specified in .ssh/config)
+LOGIN=$1
+
+if [ -z "$LOGIN" ]; then
+        echo "Usage: check_ssh_login <host> or <user@hostname>"
+        exit 1
+fi
+
+ssh $LOGIN "ls" > /dev/null 2>&1
+
+EXIT_CODE=$?
+
+if [ "$EXIT_CODE" -eq 0 ]; then
+        echo "OK: SSH login with hostname “$LOGIN” works."
+        exit $STATE_OK
+else
+
+        echo "CRITICAL: SSH login attempt using hostname “$LOGIN” failed."
+        exit $STATE_CRITICAL
+fi
