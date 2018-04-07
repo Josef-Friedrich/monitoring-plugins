@@ -35,19 +35,20 @@ STATE_UNKNOWN=3
 LOGIN=$1
 
 if [ -z "$LOGIN" ]; then
-        echo "Usage: check_ssh_login <host> or <user@hostname>"
-        exit 1
+	echo "Usage: check_ssh_login <host> or <user@hostname>"
+	exit 1
 fi
 
-ssh $LOGIN "ls" > /dev/null 2>&1
+# Can be any command, even a nonexisting command.
+ssh $LOGIN "true" > /dev/null 2>&1
 
 EXIT_CODE=$?
 
 if [ "$EXIT_CODE" -eq 0 ]; then
-        echo "OK: SSH login with hostname “$LOGIN” works."
-        exit $STATE_OK
+	echo "OK: SSH login with hostname “$LOGIN” works."
+	exit $STATE_OK
 else
 
-        echo "CRITICAL: SSH login attempt using hostname “$LOGIN” failed."
-        exit $STATE_CRITICAL
+	echo "CRITICAL: SSH login attempt using hostname “$LOGIN” failed."
+	exit $STATE_CRITICAL
 fi
