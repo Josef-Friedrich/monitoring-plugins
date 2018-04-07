@@ -1,29 +1,153 @@
 #! /bin/sh
 
-PREFIX=/sbin/
-
 # MIT License
 #
 # Copyright (c) 2016 Josef Friedrich <josef@friedrich.rocks>
 #
-# Permission is hereby granted, free of charge, to any person obtaining a
-# copy of this software and associated documentation files (the
+# Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and associated documentation files (the
 # "Software"), to deal in the Software without restriction, including
 # without limitation the rights to use, copy, modify, merge, publish,
 # distribute, sublicense, and/or sell copies of the Software, and to
 # permit persons to whom the Software is furnished to do so, subject to
 # the following conditions:
 #
-# The above copyright notice and this permission notice shall be included
-# in all copies or substantial portions of the Software.
+# The above copyright notice and this permission notice shall be
+# included in all copies or substantial portions of the Software.
 #
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-# OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
 # MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
 # IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
 # CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+PROJECT_PAGES='https://github.com/JosefFriedrich-shell/check_zpool_scrub
+https://exchange.icinga.com/joseffriedrich/check_zpool_scrub
+https://exchange.nagios.org/directory/Plugins/System-Metrics/File-System/check_zpool_scrub/details'
+
+VERSION=1.1
+FIRST_RELEASE=2016-09-08
+SHORT_DESCRIPTION='Monitoring plugin to check how long ago the last ZFS scrub was performed.'
+USAGE="check_zpool_scrub v$VERSION
+Copyright (c) $(date +%Y --date=$FIRST_RELEASE)-$(date +%Y) Josef Friedrich <josef@friedrich.rocks>
+
+$SHORT_DESCRIPTION
+
+
+Usage: check_zpool_scrub <options>
+
+Options:
+ -c, --critical=OPT_CRITICAL
+    Interval in seconds for critical state.
+ -p,--pool=OPT_POOL
+    Name of the pool
+ -h, --help
+    Show this help.
+ -r, --sudo
+    Run 'zpool history' with the help of sudo.
+ -s, --short-description
+    Show a short description / summary.
+ -v, --version
+    Show the version number.
+ -w, --warning=OPT_WARNING
+    Interval in seconds for warning state. Must be lower than -c.
+
+Performance data:
+ - last_ago
+    Time interval in seconds for last scrub.
+ - warning
+    Interval in seconds.
+ - critical
+    Interval in seconds.
+ - progress
+    Percent 0 - 100
+ - speed
+    MB per second
+ - time
+    Time to go in minutes
+"
+
+_getopts() {
+	while getopts ':c:hp:rsvw:-:' OPT ; do
+		case $OPT in
+			c) OPT_CRITICAL=$OPTARG ;;
+			h) echo "$USAGE" ; exit 0 ;;
+			p) OPT_POOL="$OPTARG" ;;
+			r) OPT_SUDO=1 ;;
+			s) echo "$SHORT_DESCRIPTION" ; exit 0 ;;
+			v) echo "$VERSION" ; exit 0 ;;
+			w) OPT_WARNING=$OPTARG ;;
+
+			\?)
+				echo "Invalid option “-$OPTARG”!" >&2
+				exit 2
+				;;
+
+			:)
+				echo "Option “-$OPTARG” requires an argument!" >&2
+				exit 3
+				;;
+
+			-)
+				LONG_OPTARG="${OPTARG#*=}"
+
+				case $OPTARG in
+
+					critical=?*)
+						OPT_CRITICAL=$LONG_OPTARG
+						;;
+
+					help)
+						echo "$USAGE"
+						exit 0
+						;;
+
+					pool=?*)
+						OPT_POOL="$LONG_OPTARG"
+						;;
+
+					sudo)
+						OPT_SUDO=1
+						;;
+
+					short-description)
+						echo "$SHORT_DESCRIPTION"
+						exit 0
+						;;
+
+					version)  echo "$VERSION" ; exit 0 ;;
+
+					warning=?*)
+						OPT_WARNING=$LONG_OPTARG
+						;;
+
+					help*|short-description*|sudo*|version*)
+						echo "No argument allowed for the option “--$OPTARG”!" >&2
+						exit 4
+						;;
+
+					critical*|pool*|warning*)
+						echo "Option “--$OPTARG” requires an argument!" >&2
+						exit 3
+						;;
+
+					'')	# "--" terminates argument processing
+						break
+						;;
+
+					*)
+						echo "Invalid option “--$OPTARG”!" >&2
+						exit 2
+						;;
+
+				esac
+				;;
+
+		esac
+	done
+}
 
 # Exit codes
 STATE_OK=0
@@ -31,100 +155,162 @@ STATE_WARNING=1
 STATE_CRITICAL=2
 STATE_UNKNOWN=3
 
-_usage() {
-	echo "check_zfs_scrub
-Copyright (c) 2016 Josef Friedrich <josef@friedrich.rocks>
-
-Checks how long ago the last ZFS scrub was performed.
-
-
-Usage: check_zfs_scrub <options>
-
-Options:
-  -c INTERVAL_CRITICAL
-    Interval in seconds for critical state.
-  -p POOL
-    Name of the pool
-  -h
-    Show this help.
-  -w INTERVAL_WARNING
-    Interval in seconds for warning state. Must be lower than -c".
+_last_scrub_date() {
+	if [ -n "$OPT_SUDO" ]; then
+		SUDO="sudo"
+	fi
+	$SUDO zpool history > /dev/null 2>&1 || echo "FAIL"
+	$SUDO zpool history | \
+		grep "zpool scrub $1" | \
+		grep -v 'zpool scrub -s' | \
+		tail -n 1 | \
+		awk '{print $1}'
 }
 
-while getopts ":c:hp:w:" OPT; do
-	case $OPT in
+_date_to_timestamp() {
+	date +%s --date="$(echo "$1" | tr '.' ' ')"
+}
 
-		c)
-			INTERVAL_CRITICAL=$OPTARG
-			;;
-
-		h)
-			_usage
-			exit 0
-			;;
-
-		p)
-			POOL="$OPTARG"
-			;;
-
-		w)
-			INTERVAL_WARNING=$OPTARG
-			;;
-
-		\?)
-			echo "Invalid option: -$OPTARG" >&2
-			exit 1
-			;;
-
-		:)
-			echo "Option -$OPTARG requires an argument." >&2
-			exit 1
-			;;
-
+_get_last_scrub() {
+	LAST_SCRUB_DATE="$(_last_scrub_date "$1")"
+	case "$LAST_SCRUB_DATE" in
+	FAIL*)
+		echo -1 ;;
+	"") # Never been scrubbed
+		echo "$(_date_to_timestamp 1970-01-01)" ;;
+	*)
+		echo "$(_date_to_timestamp "$LAST_SCRUB_DATE")" ;;
 	esac
-done
+}
 
-if [ -z "$INTERVAL_WARNING" ]; then
+_performance_data() {
+	echo "| \
+last_ago=$DIFF \
+warning=$OPT_WARNING \
+critical=$OPT_CRITICAL \
+progress=$PROGRESS \
+speed=$SPEED \
+time=$TIME"
+}
+
+_progress_grep() {
+	zpool status "$1" | \
+		grep -E -o '[[:digit:],]*%'
+}
+
+_progress_normalize() {
+	echo $1 | \
+		sed 's/%//' | \
+		tr ',' '.'
+}
+
+_progress() {
+	local GREP
+	GREP="$(_progress_grep "$1")"
+	if [ -n "$GREP" ]; then
+		_progress_normalize "$GREP"
+	else
+		echo 100
+	fi
+}
+
+##
+# Speed
+##
+
+_speed_grep() {
+	zpool status "$1" | \
+		grep -E -o '[[:digit:],]*[[:alpha:]]*/s'
+}
+
+_speed_normalize() {
+	local SPEED UNIT
+	SPEED=$(echo "$1" | sed 's#/s##' | tr , .)
+	UNIT=$(echo -n "$SPEED" | tail -c  1)
+	SPEED=$(echo "$SPEED" | sed 's/.$//' )
+
+	if [ "$UNIT" = K ]; then
+		SPEED="$(echo "$SPEED" | awk '{MB = $1 / 1024 ; print MB}')"
+	fi
+	echo $SPEED
+}
+
+_speed() {
+	local SPEED
+	SPEED="$(_speed_grep "$1")"
+	if [ -n "$SPEED" ]; then
+		_speed_normalize "$SPEED"
+	else
+		echo 0
+	fi
+}
+
+##
+# time to go
+##
+
+_time_grep() {
+	zpool status "$1" | \
+		grep -P -o '(?<=, )[[:digit:]]*h[[:digit:]]*m(?= to go)'
+}
+
+_time_to_min() {
+	local HOURS MIN
+	HOURS=$(echo "$1" | sed 's/h.*//')
+	MIN=$(echo "$1" | sed 's/.*h//' | sed 's/m//')
+	echo $((HOURS * 60 + MIN))
+}
+
+_time() {
+	local GREP
+	GREP="$(_time_grep "$1")"
+	if [ -n "$GREP" ]; then
+		_time_to_min "$GREP"
+	else
+		echo 0
+	fi
+}
+
+## This SEPARATOR is required for test purposes. Please don’t remove! ##
+
+_getopts $@
+
+if [ -z "$OPT_WARNING" ]; then
 	# 1 month 60*60*24*31
-	INTERVAL_WARNING=2678400
+	OPT_WARNING=2678400
 fi
 
-if [ -z "$INTERVAL_CRITICAL" ]; then
-	# 3 day
+if [ -z "$OPT_CRITICAL" ]; then
 	# 2 month 60*60*24*31*2
-	INTERVAL_CRITICAL=5356800
+	OPT_CRITICAL=5356800
 fi
 
-if ! ${PREFIX}zpool status $POOL > /dev/null 2>&1; then
-	echo "'$POOL' is no zfs pool!"
-	_usage
-	exit 3
+if ! zpool status "$OPT_POOL" > /dev/null 2>&1; then
+	echo "“$OPT_POOL” is no ZFS pool!" >&2
+	echo "$USAGE" >&2
+	exit $STATE_UNKNOWN
 fi
 
 NOW=$(date +%s)
-
-LAST_SCRUB=$(${PREFIX}zpool history | \
-	grep "zpool scrub $POOL" | \
-	grep -v 'zpool scrub -s' | \
-	tail -n 1 | \
-	awk '{print $1}')
-
-LAST_SCRUB=$(date '+%s' --date="$(echo $LAST_SCRUB | tr '.' ' ')")
-
+LAST_SCRUB=$(_get_last_scrub "$OPT_POOL")
 DIFF=$((NOW - LAST_SCRUB))
 
-if [ "$INTERVAL_WARNING" -gt "$INTERVAL_CRITICAL" ]; then
-	echo "<warntime> must be smaller than <crittime>"
-	_usage
-	exit 3
+if [ "$OPT_WARNING" -gt "$OPT_CRITICAL" ]; then
+	echo '<warntime> must be smaller than <crittime>' >&2
+	_usage  >&2
+	exit $STATE_UNKNOWN
 fi
+
+PROGRESS=$(_progress "$OPT_POOL")
+SPEED="$(_speed "$OPT_POOL")"
+TIME="$(_time "$OPT_POOL")"
 
 RETURN=STATE_UNKNOWN
 
-if [ "$DIFF" -gt "$INTERVAL_CRITICAL" ]; then
+if [ "$DIFF" -gt "$OPT_CRITICAL" ]; then
 	RETURN=$STATE_CRITICAL
 	MESSAGE="CRITICAL:"
-elif [ "$DIFF" -gt "$INTERVAL_WARNING" ]; then
+elif [ "$DIFF" -gt "$OPT_WARNING" ]; then
 	RETURN=$STATE_WARNING
 	MESSAGE="WARNING:"
 else
@@ -132,12 +318,13 @@ else
 	MESSAGE="OK:"
 fi
 
-DATE=$(date -d @$LAST_SCRUB +"%Y-%m-%dT%H:%M:%SZ")
+DATE=$(date +%Y-%m-%dT%H:%M:%SZ --date @$LAST_SCRUB)
 
-if [ -n "$POOL" ]; then
-	POOL="'$POOL' "
+if [ $LAST_SCRUB = -1 ]; then
+	RETURN=$STATE_UNKNOWN
+	echo "UNKNOWN: Failed to run zpool history"
+else
+	echo "$MESSAGE The last scrub on zpool “${OPT_POOL}” was performed on $DATE $(_performance_data)"
 fi
-
-echo "$MESSAGE last scrub on ${POOL}have been performed on $DATE"
 
 exit $RETURN

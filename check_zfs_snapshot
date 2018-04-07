@@ -23,36 +23,52 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+PROJECT_PAGES='https://github.com/JosefFriedrich-shell/check_zfs_snapshot
+https://exchange.icinga.com/joseffriedrich/check_zfs_snapshot
+https://exchange.nagios.org/directory/Plugins/System-Metrics/File-System/check_zfs_snapshot/details'
+
+VERSION=1.1
+FIRST_RELEASE=2016-09-08
+SHORT_DESCRIPTION='Monitoring plugin to check how long ago the last snapshot of a ZFS dataset was created.'
+USAGE="check_zfs_snapshot v$VERSION
+Copyright (c) $(date +%Y --date=$FIRST_RELEASE)-$(date +%Y) Josef Friedrich <josef@friedrich.rocks>
+
+$SHORT_DESCRIPTION
+
+
+Usage: check_zfs_snapshot <options>
+
+Options:
+ -c, --critical=OPT_CRITICAL
+    Interval in seconds for critical state.
+ -d, --dataset=OPT_DATASET
+    The ZFS dataset to check.
+ -h, --help
+    Show this help.
+ -s, --short-description
+    Show a short description of the command.
+ -v, --version
+    Show the version number.
+ -w, --warning=OPT_WARNING
+    Interval in seconds for warning state. Must be lower than -c
+
+Performance data:
+ - last_ago
+    Time interval in seconds for last snapshot.
+ - warning
+    Interval in seconds.
+ - critical
+    Interval in seconds.
+ - snapshot_count
+    How many snapshot exists in the given dataset and all child
+    datasets exists.
+"
+
 # Exit codes
 STATE_OK=0
 STATE_WARNING=1
 STATE_CRITICAL=2
 STATE_UNKNOWN=3
-
-_short_description() {
-	echo 'Checks how long ago the last snapshot of a ZFS dataset was created.'
-}
-
-_usage() {
-	echo "check_zfs_snapshot
-Copyright (c) 2016 Josef Friedrich <josef@friedrich.rocks>
-
-$(_short_description)
-
-Usage: check_zfs_snapshot <options>
-
-Options:
-  -c, --critical=INTERVAL_CRITICAL
-    Interval in seconds for critical state.
-  -d, --dataset=DATASET
-    The ZFS dataset to check.
-  -h, --help
-    Show this help.
-  -s, --short-description
-    Show a short description of the command.
-  -w, --warning=INTERVAL_WARNING
-    Interval in seconds for warning state. Must be lower than -c"
-}
 
 _get_last_snapshot() {
 	zfs get creation -Hpr -t snapshot "$1" | \
@@ -60,29 +76,34 @@ _get_last_snapshot() {
 }
 
 _getopts() {
-	while getopts ':c:d:hsw:-:' OPT ; do
+	while getopts ':c:d:hsvw:-:' OPT ; do
 		case $OPT in
 
 			c)
-				INTERVAL_CRITICAL=$OPTARG
+				OPT_CRITICAL=$OPTARG
 				;;
 
 			d)
-				DATASET="$OPTARG"
+				OPT_DATASET="$OPTARG"
 				;;
 
 			h)
-				_usage
+				echo "$USAGE"
 				exit 0
 				;;
 
 			s)
-				_short_description
+				echo "$SHORT_DESCRIPTION"
+				exit 0
+				;;
+
+			v)
+				echo "$VERSION"
 				exit 0
 				;;
 
 			w)
-				INTERVAL_WARNING=$OPTARG
+				OPT_WARNING=$OPTARG
 				;;
 
 			\?)
@@ -101,30 +122,40 @@ _getopts() {
 				case $OPTARG in
 
 					critical=?*)
-						INTERVAL_CRITICAL=$LONG_OPTARG
+						OPT_CRITICAL=$LONG_OPTARG
 						;;
 
 					dataset=?*)
-						DATASET="$LONG_OPTARG"
+						OPT_DATASET="$LONG_OPTARG"
 						;;
 
 					help)
-						_usage
+						echo "$USAGE"
 						exit 0
 						;;
 
 					short-description)
-						_short_description
+						echo "$SHORT_DESCRIPTION"
+						exit 0
+						;;
+
+					version)
+						echo "$VERSION"
 						exit 0
 						;;
 
 					warning=?*)
-						INTERVAL_WARNING=$LONG_OPTARG
+						OPT_WARNING=$LONG_OPTARG
 						;;
 
 					critical*|dataset*|warning*)
 						echo "Option “--$OPTARG” requires an argument!" >&2
 						exit 3
+						;;
+
+					help*|short-description*|version*)
+						echo "No argument allowed for the option “--$OPTARG”!" >&2
+						exit 4
 						;;
 
 					'')	# "--" terminates argument processing
@@ -150,9 +181,9 @@ _snapshot_count() {
 _performance_data() {
 	echo "| \
 last_ago=$DIFF \
-warning=$INTERVAL_WARNING \
-critical=$INTERVAL_CRITICAL \
-snapshot_count=$(_snapshot_count "$DATASET")\
+warning=$OPT_WARNING \
+critical=$OPT_CRITICAL \
+snapshot_count=$(_snapshot_count "$OPT_DATASET")\
 "
 }
 
@@ -160,46 +191,46 @@ snapshot_count=$(_snapshot_count "$DATASET")\
 
 _getopts $@
 
-if [ -z "$INTERVAL_WARNING" ]; then
+if [ -z "$OPT_WARNING" ]; then
 	# 1 day
-	INTERVAL_WARNING=86400
+	OPT_WARNING=86400
 fi
 
-if [ -z "$INTERVAL_CRITICAL" ]; then
+if [ -z "$OPT_CRITICAL" ]; then
 	# 3 day
-	INTERVAL_CRITICAL=259200
+	OPT_CRITICAL=259200
 fi
 
-if [ -z "$DATASET" ]; then
+if [ -z "$OPT_DATASET" ]; then
 	echo "Dataset has to be set! Use option -d <dataset>" >&2
 	_usage >&2
 	exit $STATE_UNKNOWN
 fi
 
-if ! zfs list "$DATASET" > /dev/null 2>&1; then
-	echo "'$DATASET' is no ZFS dataset!" >&2
+if ! zfs list "$OPT_DATASET" > /dev/null 2>&1; then
+	echo "'$OPT_DATASET' is no ZFS dataset!" >&2
 	_usage >&2
 	exit $STATE_UNKNOWN
 fi
 
 NOW=$(date +%s)
 
-CREATION_DATE=$(_get_last_snapshot "$DATASET")
+CREATION_DATE=$(_get_last_snapshot "$OPT_DATASET")
 
 DIFF=$((NOW - CREATION_DATE))
 
-if [ "$INTERVAL_WARNING" -gt "$INTERVAL_CRITICAL" ]; then
-	echo '-w INTERVAL_WARNING must be smaller than -c INTERVAL_CRITICAL'
+if [ "$OPT_WARNING" -gt "$OPT_CRITICAL" ]; then
+	echo '-w OPT_WARNING must be smaller than -c OPT_CRITICAL'
 	_usage >&2
 	exit $STATE_UNKNOWN
 fi
 
 RETURN=STATE_UNKNOWN
 
-if [ "$DIFF" -gt "$INTERVAL_CRITICAL" ]; then
+if [ "$DIFF" -gt "$OPT_CRITICAL" ]; then
 	RETURN=$STATE_CRITICAL
 	MESSAGE="CRITICAL:"
-elif [ "$DIFF" -gt "$INTERVAL_WARNING" ]; then
+elif [ "$DIFF" -gt "$OPT_WARNING" ]; then
 	RETURN=$STATE_WARNING
 	MESSAGE="WARNING:"
 else
@@ -209,6 +240,6 @@ fi
 
 DATE=$(date -d @$CREATION_DATE +%Y-%m-%dT%H:%M:%SZ)
 
-echo "$MESSAGE Last snapshot for dataset “$DATASET” was created on $DATE $(_performance_data)"
+echo "$MESSAGE Last snapshot for dataset “$OPT_DATASET” was created on $DATE $(_performance_data)"
 
 exit $RETURN
