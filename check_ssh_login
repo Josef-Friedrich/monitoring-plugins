@@ -45,10 +45,9 @@ ssh $LOGIN "true" > /dev/null 2>&1
 EXIT_CODE=$?
 
 if [ "$EXIT_CODE" -eq 0 ]; then
-	echo "OK: SSH login with hostname “$LOGIN” works."
+	echo "OK: SSH login with hostname '$LOGIN' works."
 	exit $STATE_OK
 else
-
-	echo "CRITICAL: SSH login attempt using hostname “$LOGIN” failed."
+	echo "CRITICAL: SSH login attempt using hostname '$LOGIN' failed."
 	exit $STATE_CRITICAL
 fi
