@@ -25,7 +25,7 @@
 
 FIRST_RELEASE=2017-08-13
 VERSION=1.0
-PROJECT_PAGES="https://github.com/JosefFriedrich-shell/skeleton"
+PROJECT_PAGES="https://github.com/Josef-Friedrich/skeleton"
 SHORT_DESCRIPTION='This is the management script of the skeleton.sh project!'
 USAGE="$(basename "$0") v$VERSION
 
@@ -148,7 +148,7 @@ _getopts() {
 _sync_skeleton() {
 	_get() {
 		mkdir -p "$(dirname "$1")"
-		wget -O "$1" "https://raw.githubusercontent.com/JosefFriedrich-shell/skeleton/master/$1"
+		wget -O "$1" "https://raw.githubusercontent.com/Josef-Friedrich/skeleton/master/$1"
 	}
 
 	_getx() {
@@ -195,7 +195,7 @@ _sync_dependencies() {
 	}
 
 	_get test/lib/bash_unit pgrange/bash_unit/master/bash_unit
-	_get test/lib/test-helper.sh JosefFriedrich-shell/test-helper.sh/master/test-helper.sh
+	_get test/lib/test-helper.sh Josef-Friedrich/test-helper.sh/master/test-helper.sh
 	cp skeleton.sh test/lib/skeleton.sh
 
 	rm -rf tmp_bats
@@ -216,7 +216,7 @@ _render_readme() {
 	########################################################################
 
 	cat <<EOF >> README.md
-[![Build Status](https://travis-ci.org/JosefFriedrich-shell/$PROJECT_NAME.svg?branch=master)](https://travis-ci.org/JosefFriedrich-shell/$PROJECT_NAME)
+[![Build Status](https://travis-ci.org/Josef-Friedrich/$PROJECT_NAME.svg?branch=master)](https://travis-ci.org/Josef-Friedrich/$PROJECT_NAME)
 
 # $PROJECT_NAME
 EOF

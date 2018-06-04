@@ -2,7 +2,7 @@
 
 _get() {
         wget -O $1 \
-        https://raw.githubusercontent.com/JosefFriedrich-shell/$1/master/$1
+        https://raw.githubusercontent.com/Josef-Friedrich/$1/master/$1
         chmod a+x $1
 }
 
